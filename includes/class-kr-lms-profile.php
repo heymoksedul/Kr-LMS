@@ -403,12 +403,14 @@ class KR_LMS_Profile {
         $table_users = $wpdb->users;
         $posts = $wpdb->posts;
 
-        // 1. Get courses where the current user has activity
+        // 1. Get courses where the current user is enrolled
         $user_courses = $wpdb->get_results($wpdb->prepare("
-            SELECT DISTINCT course_id, p.post_title as course_title
-            FROM $table_lb l
-            LEFT JOIN $posts p ON l.course_id = p.ID
-            WHERE l.user_id = %d
+            SELECT DISTINCT i.item_id as course_id, p.post_title as course_title
+            FROM {$wpdb->prefix}learnpress_user_items i
+            LEFT JOIN {$wpdb->posts} p ON i.item_id = p.ID
+            WHERE i.user_id = %d 
+            AND i.item_type = 'lp_course'
+            AND i.status IN ('enrolled', 'finished', 'passed')
             ORDER BY p.post_title ASC
         ", $user_id));
 
@@ -435,6 +437,8 @@ class KR_LMS_Profile {
                         ORDER BY l.points DESC, l.date ASC
                         LIMIT 20
                     ", $c_id));
+
+                    if (empty($rankings)) continue;
                 ?>
                     <div class="kr-course-leaderboard">
                         <h4 class="kr-course-lb-title">

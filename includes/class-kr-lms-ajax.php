@@ -14,9 +14,83 @@ class KR_LMS_AJAX {
         add_action('wp_ajax_kb_lb_save',   [$this, 'save_leaderboard']);
         add_action('wp_ajax_kb_lb_delete', [$this, 'delete_leaderboard']);
 
+        add_action('wp_ajax_kr_load_leaderboard',        [$this, 'load_leaderboard']);
+        add_action('wp_ajax_nopriv_kr_load_leaderboard', [$this, 'load_leaderboard']);
+
         // Certificate Application
         add_action('wp_ajax_kr_submit_cert_app', [$this, 'submit_cert_app']);
         add_action('wp_ajax_kr_delete_app',      [$this, 'delete_application']);
+    }
+
+    public function load_leaderboard() {
+        $course_id = isset($_POST['course_id']) ? intval($_POST['course_id']) : 0;
+        $offset    = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
+        $limit     = 20;
+        $type      = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : 'course';
+
+        global $wpdb;
+        $table = $wpdb->prefix . "kr_leaderboard";
+        $users = $wpdb->users;
+        $results = [];
+
+        if ($type === 'global') {
+            $results = $wpdb->get_results($wpdb->prepare("
+                SELECT l.user_id, u.display_name, SUM(l.points) as points, 'All Exams' as exam_name
+                FROM $table l
+                LEFT JOIN $users u ON l.user_id = u.ID
+                GROUP BY l.user_id
+                ORDER BY points DESC
+                LIMIT %d OFFSET %d
+            ", $limit, $offset));
+        } else {
+            if ($course_id) {
+                $results = $wpdb->get_results($wpdb->prepare("
+                    SELECT l.*, u.display_name 
+                    FROM $table l
+                    LEFT JOIN $users u ON l.user_id = u.ID
+                    WHERE l.course_id = %d
+                    ORDER BY l.points DESC, l.date ASC
+                    LIMIT %d OFFSET %d
+                ", $course_id, $limit, $offset));
+            }
+        }
+
+        if (empty($results)) {
+            wp_send_json_error(['message' => 'No more results']);
+        }
+
+        ob_start();
+        $rank = $offset + 1;
+        foreach ($results as $row) {
+            $initial = strtoupper(substr($row->display_name, 0, 1));
+            $rankClass = ($rank <= 3) ? 'kr-lb-rank-' . $rank : '';
+            $examDisplay = ($type === 'global') ? 'All Courses' : $row->exam_name;
+            
+            // Output HTML row (matching the Shortcode HTML structure)
+            ?>
+            <tr>
+                <td class="kr-lb-rank <?php echo $rankClass; ?>">
+                    <?php 
+                        if($rank == 1) echo '🥇';
+                        elseif($rank == 2) echo '🥈';
+                        elseif($rank == 3) echo '🥉';
+                        else echo $rank;
+                    ?>
+                </td>
+                <td>
+                    <div class="kr-lb-user">
+                        <div class="kr-lb-avatar"><?php echo $initial; ?></div>
+                        <span><?php echo esc_html($row->display_name); ?></span>
+                    </div>
+                </td>
+                <td class="kr-lb-exam"><?php echo esc_html($examDisplay); ?></td>
+                <td class="kr-lb-points"><?php echo number_format($row->points, 1); ?></td>
+            </tr>
+            <?php
+            $rank++;
+        }
+        $html = ob_get_clean();
+        wp_send_json_success(['html' => $html]);
     }
 
     public function delete_application() {

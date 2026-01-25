@@ -211,7 +211,7 @@ class KR_LMS_Shortcode {
     public function render_leaderboard($atts) {
         $atts = shortcode_atts([
             'course_id' => 0,
-            'limit'     => 10,
+            'limit'     => 20,
             'title'     => 'Leaderboard',
             'type'      => 'course' // 'course' or 'global'
         ], $atts);
@@ -221,8 +221,11 @@ class KR_LMS_Shortcode {
         $users = $wpdb->users;
         $results = [];
 
+        $course_id = intval($atts['course_id']);
+        if (!$course_id && $atts['type'] !== 'global') $course_id = get_the_ID();
+
+        // 1. Get Top Results
         if ($atts['type'] === 'global') {
-            // Global Leaderboard (Sum of points)
             $results = $wpdb->get_results($wpdb->prepare("
                 SELECT l.user_id, u.display_name, SUM(l.points) as points, 'All Exams' as exam_name
                 FROM $table l
@@ -232,10 +235,6 @@ class KR_LMS_Shortcode {
                 LIMIT %d
             ", $atts['limit']));
         } else {
-            // Course Specific
-            $course_id = intval($atts['course_id']);
-            if (!$course_id) $course_id = get_the_ID();
-
             if ($course_id) {
                 $results = $wpdb->get_results($wpdb->prepare("
                     SELECT l.*, u.display_name 
@@ -248,87 +247,112 @@ class KR_LMS_Shortcode {
             }
         }
 
-        if (empty($results)) return '';
+        if (empty($results) && !is_user_logged_in()) return '';
+
+        // 2. Check Current User Rank (if logged in and not in top results)
+        $current_user_id = get_current_user_id();
+        $my_row = null;
+        $my_rank = 0;
+        
+        if ($current_user_id) {
+            $in_list = false;
+            foreach ($results as $index => $row) {
+                if ($row->user_id == $current_user_id) {
+                    $in_list = true;
+                    $my_rank = $index + 1; // Rank in the current list
+                    break;
+                }
+            }
+
+            if (!$in_list) {
+                // Fetch User Details Only
+                if ($atts['type'] === 'global') {
+                    $my_data = $wpdb->get_row($wpdb->prepare("
+                        SELECT l.user_id, u.display_name, SUM(l.points) as points, 'All Exams' as exam_name
+                        FROM $table l
+                        LEFT JOIN $users u ON l.user_id = u.ID
+                        WHERE l.user_id = %d
+                        GROUP BY l.user_id
+                    ", $current_user_id));
+
+                    if ($my_data) {
+                        // Calculate Rank Global
+                        $higher_points = $wpdb->get_var($wpdb->prepare("
+                            SELECT COUNT(*) FROM (
+                                SELECT user_id, SUM(points) as sp FROM $table GROUP BY user_id
+                            ) as sub WHERE sp > %f
+                        ", $my_data->points));
+                        $my_rank = $higher_points + 1;
+                        $my_row = $my_data;
+                    }
+                } else {
+                    $my_data = $wpdb->get_row($wpdb->prepare("
+                        SELECT l.*, u.display_name 
+                        FROM $table l
+                        LEFT JOIN $users u ON l.user_id = u.ID
+                        WHERE l.course_id = %d AND l.user_id = %d
+                    ", $course_id, $current_user_id));
+
+                    if ($my_data) {
+                         // Calculate Rank Course
+                        $higher_points = $wpdb->get_var($wpdb->prepare("
+                            SELECT COUNT(*) FROM $table WHERE course_id = %d AND points > %f
+                        ", $course_id, $my_data->points));
+                        $my_rank = $higher_points + 1;
+                        $my_row = $my_data;
+                    } else {
+                        // User is enrolled but has no points/entry?
+                        // Create a dummy row for display
+                        $u = get_userdata($current_user_id);
+                        if ($u) {
+                            $my_row = (object) [
+                                'user_id' => $current_user_id,
+                                'display_name' => $u->display_name,
+                                'points' => 0,
+                                'exam_name' => 'No Exam Data'
+                            ];
+                            $my_rank = '-';
+                        }
+                    }
+                }
+            }
+        }
 
         ob_start();
         ?>
-        <div class="kr-lms-leaderboard-wrapper">
+        <div class="kr-lms-leaderboard-wrapper" id="kr-lms-lb-<?php echo ($atts['type'] === 'global' ? 'global' : $course_id); ?>">
             <style>
+                /* Same CSS plus Load More styles */
                 .kr-lms-leaderboard-wrapper {
-                    background: #fff;
-                    border: 1px solid #eee;
-                    border-radius: 8px;
-                    padding: 20px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-                    margin: 20px 0;
-                    font-family: inherit;
+                    background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 20px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin: 20px 0; font-family: inherit;
                 }
-                .kr-lms-lb-title {
-                    font-size: 18px;
-                    font-weight: 600;
-                    margin-bottom: 15px;
-                    color: #333;
-                    border-bottom: 1px solid #f0f0f0;
-                    padding-bottom: 10px;
-                }
-                .kr-lms-lb-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-                .kr-lms-lb-table th {
-                    text-align: left;
-                    padding: 10px;
-                    color: #666;
-                    font-size: 13px;
-                    text-transform: uppercase;
-                    background: #f9f9f9;
-                    border-radius: 4px;
-                }
-                .kr-lms-lb-table td {
-                    padding: 12px 10px;
-                    border-bottom: 1px solid #f0f0f0;
-                    vertical-align: middle;
-                }
-                .kr-lms-lb-table tr:last-child td {
-                    border-bottom: none;
-                }
-                .kr-lb-rank {
-                    font-weight: 700;
-                    color: #888;
-                    width: 40px;
-                }
-                .kr-lb-rank-1 { color: #d4af37; } /* Gold */
-                .kr-lb-rank-2 { color: #c0c0c0; } /* Silver */
-                .kr-lb-rank-3 { color: #cd7f32; } /* Bronze */
+                .kr-lms-lb-title { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
+                .kr-lms-lb-table { width: 100%; border-collapse: collapse; }
+                .kr-lms-lb-table th { text-align: left; padding: 10px; color: #666; font-size: 13px; text-transform: uppercase; background: #f9f9f9; border-radius: 4px; }
+                .kr-lms-lb-table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+                .kr-lms-lb-table tr:last-child td { border-bottom: none; }
+                .kr-lb-rank { font-weight: 700; color: #888; width: 40px; }
+                .kr-lb-rank-1 { color: #d4af37; } 
+                .kr-lb-rank-2 { color: #c0c0c0; } 
+                .kr-lb-rank-3 { color: #cd7f32; } 
+                .kr-lb-user { display: flex; align-items: center; gap: 10px; font-weight: 500; color: #333; }
+                .kr-lb-avatar { width: 32px; height: 32px; background: #e2e8f0; color: #475569; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+                .kr-lb-points { font-weight: 700; color: #2271b1; text-align: right; }
+                .kr-lb-exam { color: #666; font-size: 13px; }
                 
-                .kr-lb-user {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    font-weight: 500;
-                    color: #333;
+                .kr-lb-my-rank { 
+                    margin-top: 20px; border-top: 2px dashed #e2e8f0; padding-top: 15px; background: #f8fafc; margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; margin-bottom: -20px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
                 }
-                .kr-lb-avatar {
-                    width: 32px;
-                    height: 32px;
-                    background: #e2e8f0;
-                    color: #475569;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 12px;
-                    font-weight: bold;
+                .kr-lb-load-more {
+                    text-align: center; margin-top: 15px;
                 }
-                .kr-lb-points {
-                    font-weight: 700;
-                    color: #2271b1;
-                    text-align: right;
+                .kr-lb-btn {
+                    padding: 8px 16px; background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569;
+                    cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: 600;
+                    transition: all 0.2s;
                 }
-                .kr-lb-exam {
-                    color: #666;
-                    font-size: 13px;
-                }
+                .kr-lb-btn:hover { background: #e2e8f0; color: #1e293b; }
             </style>
             
             <?php if (!empty($atts['title'])): ?>
@@ -344,36 +368,102 @@ class KR_LMS_Shortcode {
                         <th style="text-align:right">Points</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="kr-lb-body-<?php echo $course_id; ?>">
                     <?php 
                     $rank = 1;
-                    foreach ($results as $row): 
-                        $initial = strtoupper(substr($row->display_name, 0, 1));
-                        $rankClass = ($rank <= 3) ? 'kr-lb-rank-' . $rank : '';
-                        $examDisplay = ($atts['type'] === 'global') ? 'All Courses' : $row->exam_name;
+                    if (!empty($results)) {
+                        foreach ($results as $row): 
+                            $initial = strtoupper(substr($row->display_name, 0, 1));
+                            $rankClass = ($rank <= 3) ? 'kr-lb-rank-' . $rank : '';
+                            $examDisplay = ($atts['type'] === 'global') ? 'All Courses' : $row->exam_name;
+                            // Add 'highlight' class if it's me
+                            $is_me = ($row->user_id == $current_user_id) ? 'background:#f0f9ff;' : '';
+                        ?>
+                        <tr style="<?php echo $is_me; ?>">
+                            <td class="kr-lb-rank <?php echo $rankClass; ?>">
+                                <?php 
+                                    if($rank == 1) echo '🥇';
+                                    elseif($rank == 2) echo '🥈';
+                                    elseif($rank == 3) echo '🥉';
+                                    else echo $rank;
+                                ?>
+                            </td>
+                            <td>
+                                <div class="kr-lb-user">
+                                    <div class="kr-lb-avatar"><?php echo $initial; ?></div>
+                                    <span><?php echo esc_html($row->display_name); ?></span>
+                                </div>
+                            </td>
+                            <td class="kr-lb-exam"><?php echo esc_html($examDisplay); ?></td>
+                            <td class="kr-lb-points"><?php echo number_format($row->points, 1); ?></td>
+                        </tr>
+                        <?php $rank++; endforeach; 
+                    } else {
+                        echo '<tr><td colspan="4" style="text-align:center; padding:20px;">No ranks yet.</td></tr>';
+                    }
                     ?>
-                    <tr>
-                        <td class="kr-lb-rank <?php echo $rankClass; ?>">
-                            <?php 
-                                if($rank == 1) echo '🥇';
-                                elseif($rank == 2) echo '🥈';
-                                elseif($rank == 3) echo '🥉';
-                                else echo $rank;
-                            ?>
-                        </td>
-                        <td>
-                            <div class="kr-lb-user">
-                                <div class="kr-lb-avatar"><?php echo $initial; ?></div>
-                                <span><?php echo esc_html($row->display_name); ?></span>
-                            </div>
-                        </td>
-                        <td class="kr-lb-exam"><?php echo esc_html($examDisplay); ?></td>
-                        <td class="kr-lb-points"><?php echo number_format($row->points, 1); ?></td>
-                    </tr>
-                    <?php $rank++; endforeach; ?>
                 </tbody>
             </table>
+            
+            <?php if (count($results) >= $atts['limit']): ?>
+                <div class="kr-lb-load-more">
+                    <button class="kr-lb-btn" onclick="krLoadMoreLB(this, <?php echo $course_id; ?>, '<?php echo esc_js($atts['type']); ?>')">Load More</button>
+                </div>
+            <?php endif; ?>
+
+            <!-- My Rank Sticky Footer -->
+            <?php if ($my_row && !$in_list && $current_user_id): ?>
+                <div class="kr-lb-my-rank">
+                    <table class="kr-lms-lb-table" style="margin:0;">
+                        <tr>
+                            <td width="10%" class="kr-lb-rank" style="color:#2563eb;"><?php echo $my_rank; ?></td>
+                            <td>
+                                <div class="kr-lb-user">
+                                    <div class="kr-lb-avatar" style="background:#2563eb; color:#fff;"><?php echo strtoupper(substr($my_row->display_name, 0, 1)); ?></div>
+                                    <span style="color:#2563eb;">You</span>
+                                </div>
+                            </td>
+                            <td class="kr-lb-exam"><?php echo ($atts['type'] === 'global') ? 'All Courses' : $my_row->exam_name; ?></td>
+                            <td class="kr-lb-points" style="color:#2563eb;"><?php echo number_format($my_row->points, 1); ?></td>
+                        </tr>
+                    </table>
+                </div>
+            <?php endif; ?>
+
         </div>
+        
+        <script>
+        function krLoadMoreLB(btn, courseId, type) {
+            btn.innerText = 'Loading...';
+            var offset = document.querySelectorAll('#kr-lb-body-' + courseId + ' tr').length;
+            
+            var data = new FormData();
+            data.append('action', 'kr_load_leaderboard');
+            data.append('course_id', courseId);
+            data.append('type', type);
+            data.append('offset', offset);
+
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                method: 'POST',
+                body: data
+            })
+            .then(response => response.json())
+            .then(res => {
+                if(res.success) {
+                    var tbody = document.getElementById('kr-lb-body-' + courseId);
+                    tbody.insertAdjacentHTML('beforeend', res.data.html);
+                    btn.innerText = 'Load More';
+                } else {
+                    btn.innerText = 'No More Results';
+                    btn.disabled = true;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                btn.innerText = 'Error';
+            });
+        }
+        </script>
         <?php
         return ob_get_clean();
     }
