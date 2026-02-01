@@ -66,23 +66,42 @@ class KR_LMS_AJAX {
             $rankClass = ($rank <= 3) ? 'kr-lb-rank-' . $rank : '';
             $examDisplay = ($type === 'global') ? 'All Courses' : $row->exam_name;
             
+            // Calculate Wins (Count of courses where this user has the TOP score)
+            // Note: This logic duplicates the shortcode logic. Ideally should be helper method.
+            $wins = $wpdb->get_var($wpdb->prepare("
+                SELECT COUNT(*) 
+                FROM (
+                    SELECT course_id, MAX(points) as max_points 
+                    FROM $table 
+                    GROUP BY course_id
+                ) as winners
+                JOIN $table as my_scores 
+                ON winners.course_id = my_scores.course_id 
+                AND winners.max_points = my_scores.points
+                WHERE my_scores.user_id = %d
+            ", $row->user_id));
+
             // Output HTML row (matching the Shortcode HTML structure)
             ?>
             <tr>
                 <td class="kr-lb-rank <?php echo $rankClass; ?>">
                     <?php 
-                        if($rank == 1) echo '🥇';
-                        elseif($rank == 2) echo '🥈';
-                        elseif($rank == 3) echo '🥉';
-                        else echo $rank;
+                        $badgeClass = ($rank == 1) ? 'rank-1' : '';
+                        echo '<span class="kr-rank-badge ' . $badgeClass . '">' . $rank . '</span>';
                     ?>
                 </td>
                 <td>
                     <div class="kr-lb-user">
                         <div class="kr-lb-avatar"><?php echo $initial; ?></div>
-                        <span><?php echo esc_html($row->display_name); ?></span>
+                        <span>
+                            <?php echo esc_html($row->display_name); ?>
+                            <?php if($rank == 1): ?>
+                                <span title="Champion">🏆</span>
+                            <?php endif; ?>
+                        </span>
                     </div>
                 </td>
+                <td><?php echo intval($wins); ?></td>
                 <td class="kr-lb-exam"><?php echo esc_html($examDisplay); ?></td>
                 <td class="kr-lb-points"><?php echo number_format($row->points, 1); ?></td>
             </tr>

@@ -1,6 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+if (!class_exists('KR_LMS_Profile')) {
 class KR_LMS_Profile {
 
     public function __construct() {
@@ -451,6 +452,7 @@ class KR_LMS_Profile {
                                 <tr>
                                     <th width="50"><?php esc_html_e('Rank', 'kr-lms'); ?></th>
                                     <th><?php esc_html_e('Student', 'kr-lms'); ?></th>
+                                    <th><?php esc_html_e('Wins', 'kr-lms'); ?></th>
                                     <th><?php esc_html_e('Exam', 'kr-lms'); ?></th>
                                     <th><?php esc_html_e('Points', 'kr-lms'); ?></th>
                                     <th><?php esc_html_e('Date', 'kr-lms'); ?></th>
@@ -467,6 +469,21 @@ class KR_LMS_Profile {
                                     elseif ($rank == 3) $row_class .= ' kr-lb-top-3';
 
                                     $date = date_i18n(get_option('date_format'), strtotime($row->date));
+
+                                    // Calculate Wins
+                                    // Count courses where this user has the MAX points
+                                    $wins = $wpdb->get_var($wpdb->prepare("
+                                        SELECT COUNT(*) 
+                                        FROM (
+                                            SELECT course_id, MAX(points) as max_points 
+                                            FROM $table_lb 
+                                            GROUP BY course_id
+                                        ) as winners
+                                        JOIN $table_lb as my_scores 
+                                        ON winners.course_id = my_scores.course_id 
+                                        AND winners.max_points = my_scores.points
+                                        WHERE my_scores.user_id = %d
+                                    ", $row->user_id));
                                 ?>
                                 <tr class="<?php echo esc_attr($row_class); ?>">
                                     <td>
@@ -474,8 +491,10 @@ class KR_LMS_Profile {
                                     </td>
                                     <td>
                                         <?php echo esc_html($row->display_name ?: 'Unknown User'); ?>
+                                        <?php if ($rank == 1) echo '<span title="Champion" style="margin-left:5px;">🏆</span>'; ?>
                                         <?php if ($is_me) echo '<span class="kr-you-badge">You</span>'; ?>
                                     </td>
+                                    <td><?php echo intval($wins); ?></td>
                                     <td><?php echo esc_html($row->exam_name); ?></td>
                                     <td><strong><?php echo floatval($row->points); ?></strong></td>
                                     <td><?php echo esc_html($date); ?></td>
@@ -492,27 +511,122 @@ class KR_LMS_Profile {
             <?php endif; ?>
         </div>
         <style>
-            .kr-course-leaderboard { margin-bottom: 40px; }
-            .kr-course-lb-title { 
-                font-size: 18px; color: #444; margin-bottom: 15px; 
-                display: flex; align-items: center; gap: 8px; border-left: 4px solid #ffb900; padding-left: 10px;
+            /* Wrapper & Card */
+            .kr-course-leaderboard { 
+                margin-bottom: 40px; 
+                background: #ffffff;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08); /* deeper shadow */
+                border: 1px solid #e2e8f0;
+                overflow: hidden;
             }
-            .lp-list-table.kr-lb-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
-            .kr-lb-table th { background: #fdfdfd; padding: 15px; border-bottom: 2px solid #eee; font-weight: 700; color: #666; }
-            .kr-lb-table td { padding: 12px 15px; border-bottom: 1px solid #f2f2f2; font-size: 14px; text-align: left;}
+            .kr-course-lb-title { 
+                font-size: 18px; 
+                font-weight: 700;
+                color: #1e293b; 
+                margin: 0; 
+                padding: 24px;
+                background: #fff;
+                border-bottom: 1px solid #f1f5f9;
+                display: flex; align-items: center; gap: 10px; 
+            }
+            .kr-course-lb-title .dashicons { color: #254cf8; font-size: 24px; width: 24px; height: 24px; }
+
+            /* Table Styles */
+            .lp-list-table.kr-lb-table { 
+                width: 100%; 
+                border-collapse: separate; /* separate for border-radius on rows if needed, but collapse is fine for standard */
+                border-spacing: 0; 
+                border: none;
+                margin: 0;
+            }
+            .kr-lb-table th { 
+                background: #f8fafc; 
+                padding: 18px 24px; 
+                border-bottom: 1px solid #e2e8f0; 
+                font-weight: 600; 
+                font-size: 11px; 
+                text-transform: uppercase; 
+                letter-spacing: 0.08em;
+                color: #94a3b8; 
+                text-align: left;
+            }
+            .kr-lb-table td { 
+                padding: 20px 24px; 
+                border-bottom: 1px solid #f1f5f9; 
+                font-size: 14px; 
+                color: #334155;
+                font-weight: 500;
+                vertical-align: middle;
+            }
             .kr-lb-table tr:last-child td { border-bottom: none; }
             
-            /* Highlighting */
-            .kr-lb-me { background-color: #f0f9ff; }
-            .kr-lb-me td { font-weight: 500; color: #0073aa; }
-            .kr-you-badge { font-size: 10px; background: #0073aa; color: #fff; padding: 2px 6px; border-radius: 10px; margin-left: 5px; text-transform: uppercase; vertical-align: middle; }
+            /* Row Hover - Subtle */
+            .kr-lb-table tbody tr { transition: all 0.2s ease; }
+            .kr-lb-table tbody tr:hover { background-color: #f8fafc; }
 
-            /* Rank Badges */
-            .kr-rank-badge { display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 50%; background: #eee; font-size: 12px; font-weight: bold; color: #777; }
-            .kr-lb-top-1 .kr-rank-badge { background: #ffd700; color: #fff; box-shadow: 0 2px 5px rgba(255, 215, 0, 0.4); }
-            .kr-lb-top-2 .kr-rank-badge { background: #c0c0c0; color: #fff; }
-            .kr-lb-top-3 .kr-rank-badge { background: #cd7f32; color: #fff; }
+            /* =========================
+               WINNER VIBE (Rank #1) 
+               ========================= */
+            .kr-lb-top-1 { 
+                background: linear-gradient(90deg, #fffbeb, #fff); /* Subtle gold tint fade */
+                position: relative;
+            }
+            .kr-lb-top-1:hover { background: linear-gradient(90deg, #fef3c7, #fff) !important; }
+            
+            .kr-lb-top-1 td {
+                color: #b45309; /* Dark gold text */
+                border-bottom: 1px solid #fde68a; /* Gold border stroke */
+            }
+            
+            /* Winner Glow Marker */
+            .kr-lb-top-1 td:first-child::before {
+                content: "";
+                position: absolute;
+                left: 0; top: 0; bottom: 0;
+                width: 4px;
+                background: #254cf8; /* Solid Gold Bar */
+            }
+
+            /* Highlighting "Me" */
+            .kr-lb-me { background-color: #eff6ff !important; }
+            .kr-lb-me td { color: #254cf8 !important; }
+            
+            /* Badges */
+            .kr-you-badge { 
+                font-size: 10px; background: #254cf8; color: #fff; 
+                padding: 2px 8px; border-radius: 12px; margin-left: 8px; 
+                text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;
+            }
+
+            /* Rank Numbers - Default Gray Badge */
+            .kr-rank-badge { 
+                font-size: 14px; 
+                font-weight: 700; 
+                color: #475569; /* Darker gray text */
+                background: #f1f5f9; /* Light gray bg */
+                text-align: center;
+                display: inline-block;
+                width: 32px;
+                line-height: 32px;
+                border-radius: 50%;
+            }
+            
+            /* Rank #1 - Primary Badge */
+            .kr-lb-top-1 .kr-rank-badge { 
+                background: linear-gradient(135deg, #254cf8, #1d4ed8); /* Primary Blue Gradient */
+                color: #ffffff !important; /* Force White */
+                box-shadow: 0 4px 10px rgba(37, 76, 248, 0.4);
+                transform: scale(1.1);
+            }
+            
+            /* Remove old styling logic for 2 & 3 since they now use default */
+
+            /* Typography */
+            .kr-lb-table td strong { color: inherit; font-weight: 700; }
+            .kr-lb-table td span[title="Champion"] { font-size: 18px; margin-left:8px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); }
         </style>
         <?php
-    }
+}
+}
 }

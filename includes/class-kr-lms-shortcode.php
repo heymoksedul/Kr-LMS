@@ -321,39 +321,160 @@ class KR_LMS_Shortcode {
         ob_start();
         ?>
         <div class="kr-lms-leaderboard-wrapper" id="kr-lms-lb-<?php echo ($atts['type'] === 'global' ? 'global' : $course_id); ?>">
-            <style>
-                /* Same CSS plus Load More styles */
+                /* Leaderboard Card & Wrapper */
                 .kr-lms-leaderboard-wrapper {
-                    background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 20px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin: 20px 0; font-family: inherit;
+                    background: #ffffff; 
+                    border: 1px solid #e2e8f0; 
+                    border-radius: 12px; 
+                    padding: 0;
+                    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08); /* deeper shadow */
+                    margin: 30px 0; 
+                    font-family: inherit;
+                    overflow: hidden;
                 }
-                .kr-lms-lb-title { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
-                .kr-lms-lb-table { width: 100%; border-collapse: collapse; }
-                .kr-lms-lb-table th { text-align: left; padding: 10px; color: #666; font-size: 13px; text-transform: uppercase; background: #f9f9f9; border-radius: 4px; }
-                .kr-lms-lb-table td { padding: 12px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-                .kr-lms-lb-table tr:last-child td { border-bottom: none; }
-                .kr-lb-rank { font-weight: 700; color: #888; width: 40px; }
-                .kr-lb-rank-1 { color: #d4af37; } 
-                .kr-lb-rank-2 { color: #c0c0c0; } 
-                .kr-lb-rank-3 { color: #cd7f32; } 
-                .kr-lb-user { display: flex; align-items: center; gap: 10px; font-weight: 500; color: #333; }
-                .kr-lb-avatar { width: 32px; height: 32px; background: #e2e8f0; color: #475569; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
-                .kr-lb-points { font-weight: 700; color: #2271b1; text-align: right; }
-                .kr-lb-exam { color: #666; font-size: 13px; }
+                .kr-lms-lb-title { 
+                    font-size: 18px; 
+                    font-weight: 700; 
+                    margin: 0; 
+                    color: #1e293b; 
+                    border-bottom: 1px solid #f1f5f9; 
+                    padding: 24px; 
+                    background: #fff;
+                }
                 
-                .kr-lb-my-rank { 
-                    margin-top: 20px; border-top: 2px dashed #e2e8f0; padding-top: 15px; background: #f8fafc; margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; margin-bottom: -20px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+                /* Table Styles */
+                .kr-lms-lb-table { 
+                    width: 100%; 
+                    border-collapse: separate; 
+                    border-spacing: 0;
+                    border: none;
                 }
+                .kr-lms-lb-table th { 
+                    text-align: left; 
+                    padding: 18px 24px; 
+                    color: #94a3b8; 
+                    font-size: 11px; 
+                    font-weight: 600;
+                    text-transform: uppercase; 
+                    letter-spacing: 0.08em;
+                    background: #f8fafc; 
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                .kr-lms-lb-table td { 
+                    padding: 20px 24px; 
+                    border-bottom: 1px solid #f1f5f9; 
+                    vertical-align: middle; 
+                    color: #334155;
+                    font-weight: 500;
+                    font-size: 14px;
+                }
+                .kr-lms-lb-table tr:last-child td { border-bottom: none; }
+                
+                /* Row Hover */
+                .kr-lms-lb-table tbody tr { transition: all 0.2s ease; }
+                .kr-lms-lb-table tbody tr:hover { background-color: #f8fafc; }
+
+                /* =========================
+                   WINNER VIBE (Rank #1) 
+                   ========================= */
+                .kr-lb-top-1 { 
+                    background: linear-gradient(90deg, #fffbeb, #fff); 
+                    position: relative;
+                }
+                .kr-lb-top-1:hover { background: linear-gradient(90deg, #fef3c7, #fff) !important; }
+                
+                .kr-lb-top-1 td {
+                    color: #b45309; 
+                    border-bottom: 1px solid #fde68a; 
+                }
+                /* Glow Marker */
+                .kr-lb-top-1 td:first-child::before {
+                    content: "";
+                    position: absolute;
+                    left: 0; top: 0; bottom: 0;
+                    width: 4px;
+                    background: #f59e0b; 
+                }
+
+                /* Rank Badges - Simple by Default */
+                .kr-lb-rank { 
+                    font-weight: 700; 
+                    color: #94a3b8; 
+                    width: 50px; 
+                    text-align: center;
+                    font-size: 14px; 
+                }
+
+                /* Rank #1 - Primary Badge Style */
+                /* Needs to be a block/inline-block to take background shape properly if we want a circle */
+                /* The HTML is just a number inside the TD. We can't make the whole TD a circle easily without affecting layout.
+                   We should wrap the top 1 number in a span in the loop, or uses pseudo-element or layout flexibility.
+                   Let's trust the 'simple number' request for others, and try to make Rank 1 look like a badge.
+                */
+                .kr-lb-top-1 .kr-lb-rank {
+                    /* Reset default overrides if any */
+                }
+
+                /* General Rank Badge (Default Gray) */
+                .kr-rank-badge {
+                    display: inline-block;
+                    width: 30px; height: 30px; line-height: 30px;
+                    background: #f1f5f9; /* Light Gray */
+                    color: #475569; /* Dark Gray Text */
+                    border-radius: 50%;
+                    text-align: center;
+                    font-size: 13px;
+                    font-weight: 700;
+                }
+
+                /* Rank #1 Badge - Primary Blue */
+                .kr-rank-badge.rank-1 {
+                    background: linear-gradient(135deg, #254cf8, #1d4ed8);
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 10px rgba(37, 76, 248, 0.4);
+                    font-size: 14px;
+                }
+
+                /* User Avatar & Name */
+                .kr-lb-user { display: flex; align-items: center; gap: 12px; font-weight: 500; color: #1e293b; }
+                .kr-lb-avatar { 
+                    width: 36px; height: 36px; 
+                    background: #f1f5f9; 
+                    color: #64748b; 
+                    border-radius: 50%; 
+                    display: flex; align-items: center; justify-content: center; 
+                    font-size: 13px; font-weight: 700; 
+                }
+                .kr-lb-points { font-weight: 700; color: #254cf8; text-align: right; }
+                .kr-lb-exam { color: #64748b; font-size: 13px; }
+                
+                /* My Rank sticky footer */
+                .kr-lb-my-rank { 
+                    margin: 0; 
+                    border-top: 1px solid #e2e8f0; 
+                    padding: 0;
+                    background: #eff6ff; 
+                }
+                .kr-lb-my-rank table { margin: 0; }
+                .kr-lb-my-rank td { background: #eff6ff; color: #1d4ed8; font-weight: 500; }
+                
+                /* Load More */
                 .kr-lb-load-more {
-                    text-align: center; margin-top: 15px;
+                    text-align: center; padding: 20px; border-top: 1px solid #f1f5f9;
                 }
                 .kr-lb-btn {
-                    padding: 8px 16px; background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569;
-                    cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: 600;
+                    padding: 10px 20px; 
+                    background: #fff; 
+                    border: 1px solid #cbd5e1; 
+                    color: #475569;
+                    cursor: pointer; 
+                    border-radius: 8px; 
+                    font-size: 14px; 
+                    font-weight: 600;
                     transition: all 0.2s;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
                 }
-                .kr-lb-btn:hover { background: #e2e8f0; color: #1e293b; }
-            </style>
+                .kr-lb-btn:hover { background: #f8fafc; border-color: #94a3b8; color: #1e293b; }
             
             <?php if (!empty($atts['title'])): ?>
                 <div class="kr-lms-lb-title"><?php echo esc_html($atts['title']); ?></div>
@@ -364,6 +485,7 @@ class KR_LMS_Shortcode {
                     <tr>
                         <th width="10%">#</th>
                         <th>Student</th>
+                        <th>Wins</th> <!-- New Column -->
                         <th><?php echo ($atts['type'] === 'global') ? 'Total' : 'Exam'; ?></th>
                         <th style="text-align:right">Points</th>
                     </tr>
@@ -378,28 +500,46 @@ class KR_LMS_Shortcode {
                             $examDisplay = ($atts['type'] === 'global') ? 'All Courses' : $row->exam_name;
                             // Add 'highlight' class if it's me
                             $is_me = ($row->user_id == $current_user_id) ? 'background:#f0f9ff;' : '';
+                            
+                            // Calculate Wins (Count of courses where this user has the TOP score)
+                            $wins = $wpdb->get_var($wpdb->prepare("
+                                SELECT COUNT(*) 
+                                FROM (
+                                    SELECT course_id, MAX(points) as max_points 
+                                    FROM $table 
+                                    GROUP BY course_id
+                                ) as winners
+                                JOIN $table as my_scores 
+                                ON winners.course_id = my_scores.course_id 
+                                AND winners.max_points = my_scores.points
+                                WHERE my_scores.user_id = %d
+                            ", $row->user_id));
                         ?>
                         <tr style="<?php echo $is_me; ?>">
                             <td class="kr-lb-rank <?php echo $rankClass; ?>">
                                 <?php 
-                                    if($rank == 1) echo '🥇';
-                                    elseif($rank == 2) echo '🥈';
-                                    elseif($rank == 3) echo '🥉';
-                                    else echo $rank;
+                                    $badgeClass = ($rank == 1) ? 'rank-1' : '';
+                                    echo '<span class="kr-rank-badge ' . $badgeClass . '">' . $rank . '</span>';
                                 ?>
                             </td>
                             <td>
                                 <div class="kr-lb-user">
                                     <div class="kr-lb-avatar"><?php echo $initial; ?></div>
-                                    <span><?php echo esc_html($row->display_name); ?></span>
+                                    <span>
+                                        <?php echo esc_html($row->display_name); ?>
+                                        <?php if($rank == 1): ?>
+                                            <span title="Champion">🏆</span>
+                                        <?php endif; ?>
+                                    </span>
                                 </div>
                             </td>
+                            <td><?php echo intval($wins); ?></td>
                             <td class="kr-lb-exam"><?php echo esc_html($examDisplay); ?></td>
                             <td class="kr-lb-points"><?php echo number_format($row->points, 1); ?></td>
                         </tr>
                         <?php $rank++; endforeach; 
                     } else {
-                        echo '<tr><td colspan="4" style="text-align:center; padding:20px;">No ranks yet.</td></tr>';
+                        echo '<tr><td colspan="5" style="text-align:center; padding:20px;">No ranks yet.</td></tr>';
                     }
                     ?>
                 </tbody>
@@ -412,19 +552,34 @@ class KR_LMS_Shortcode {
             <?php endif; ?>
 
             <!-- My Rank Sticky Footer -->
-            <?php if ($my_row && !$in_list && $current_user_id): ?>
+            <?php if ($my_row && !$in_list && $current_user_id): 
+                // Calculate Wins for "My Rank"
+                $my_wins = $wpdb->get_var($wpdb->prepare("
+                    SELECT COUNT(*) 
+                    FROM (
+                        SELECT course_id, MAX(points) as max_points 
+                        FROM $table 
+                        GROUP BY course_id
+                    ) as winners
+                    JOIN $table as my_scores 
+                    ON winners.course_id = my_scores.course_id 
+                    AND winners.max_points = my_scores.points
+                    WHERE my_scores.user_id = %d
+                ", $current_user_id));
+            ?>
                 <div class="kr-lb-my-rank">
                     <table class="kr-lms-lb-table" style="margin:0;">
                         <tr>
-                            <td width="10%" class="kr-lb-rank" style="color:#2563eb;"><?php echo $my_rank; ?></td>
+                            <td width="10%" class="kr-lb-rank" style="color:#254cf8;"><?php echo $my_rank; ?></td>
                             <td>
                                 <div class="kr-lb-user">
-                                    <div class="kr-lb-avatar" style="background:#2563eb; color:#fff;"><?php echo strtoupper(substr($my_row->display_name, 0, 1)); ?></div>
-                                    <span style="color:#2563eb;">You</span>
+                                    <div class="kr-lb-avatar" style="background:#254cf8; color:#fff;"><?php echo strtoupper(substr($my_row->display_name, 0, 1)); ?></div>
+                                    <span style="color:#254cf8;">You</span>
                                 </div>
                             </td>
+                            <td><?php echo intval($my_wins); ?></td>
                             <td class="kr-lb-exam"><?php echo ($atts['type'] === 'global') ? 'All Courses' : $my_row->exam_name; ?></td>
-                            <td class="kr-lb-points" style="color:#2563eb;"><?php echo number_format($my_row->points, 1); ?></td>
+                            <td class="kr-lb-points" style="color:#254cf8;"><?php echo number_format($my_row->points, 1); ?></td>
                         </tr>
                     </table>
                 </div>
