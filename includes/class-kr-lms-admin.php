@@ -466,7 +466,7 @@ class KR_LMS_Admin {
                                 <td><span class="cb-badge" style="background:#f1f5f9; color:#475569;"><?php echo intval($item->wins); ?></span></td>
                                 <td><span class="cb-badge"><?php echo $item->points; ?></span></td>
                                 <td><?php echo $item->date; ?></td>
-                                <td style="text-align:right;">
+                                <td style="text-align:right; display:flex; gap:8px; justify-content:flex-end; align-items:center;">
                                     <button class="cb-action-btn lb-edit-btn" 
                                         data-id="<?php echo $item->id; ?>"
                                         data-user-id="<?php echo $item->user_id; ?>"
@@ -474,6 +474,7 @@ class KR_LMS_Admin {
                                         data-course-id="<?php echo $item->course_id; ?>"
                                         data-course-text="<?php echo esc_attr($item->course_title); ?>"
                                         data-exam="<?php echo esc_attr($item->exam_name); ?>"
+                                        data-wins="<?php echo intval($item->wins); ?>"
                                         data-points="<?php echo $item->points; ?>"
                                         data-date="<?php echo $item->date; ?>"
                                     >
