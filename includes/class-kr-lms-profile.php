@@ -470,20 +470,7 @@ class KR_LMS_Profile {
 
                                     $date = date_i18n(get_option('date_format'), strtotime($row->date));
 
-                                    // Calculate Wins
-                                    // Count courses where this user has the MAX points
-                                    $wins = $wpdb->get_var($wpdb->prepare("
-                                        SELECT COUNT(*) 
-                                        FROM (
-                                            SELECT course_id, MAX(points) as max_points 
-                                            FROM $table_lb 
-                                            GROUP BY course_id
-                                        ) as winners
-                                        JOIN $table_lb as my_scores 
-                                        ON winners.course_id = my_scores.course_id 
-                                        AND winners.max_points = my_scores.points
-                                        WHERE my_scores.user_id = %d
-                                    ", $row->user_id));
+                                    $wins = intval($row->wins);
                                 ?>
                                 <tr class="<?php echo esc_attr($row_class); ?>">
                                     <td>

@@ -501,19 +501,7 @@ class KR_LMS_Shortcode {
                             // Add 'highlight' class if it's me
                             $is_me = ($row->user_id == $current_user_id) ? 'background:#f0f9ff;' : '';
                             
-                            // Calculate Wins (Count of courses where this user has the TOP score)
-                            $wins = $wpdb->get_var($wpdb->prepare("
-                                SELECT COUNT(*) 
-                                FROM (
-                                    SELECT course_id, MAX(points) as max_points 
-                                    FROM $table 
-                                    GROUP BY course_id
-                                ) as winners
-                                JOIN $table as my_scores 
-                                ON winners.course_id = my_scores.course_id 
-                                AND winners.max_points = my_scores.points
-                                WHERE my_scores.user_id = %d
-                            ", $row->user_id));
+                            $wins = intval($row->wins);
                         ?>
                         <tr style="<?php echo $is_me; ?>">
                             <td class="kr-lb-rank <?php echo $rankClass; ?>">

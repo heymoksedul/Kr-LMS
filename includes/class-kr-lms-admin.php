@@ -6,6 +6,16 @@ class KR_LMS_Admin {
     public function __construct() {
         add_action('admin_menu',            [$this, 'menu']);
         add_action('admin_enqueue_scripts', [$this, 'scripts']);
+        $this->ensure_db_schema();
+    }
+
+    private function ensure_db_schema() {
+        global $wpdb;
+        $table = $wpdb->prefix . "kr_leaderboard";
+        $column = $wpdb->get_results($wpdb->prepare("SHOW COLUMNS FROM $table LIKE %s", 'wins'));
+        if (empty($column)) {
+            $wpdb->query("ALTER TABLE $table ADD COLUMN wins INT DEFAULT 0 AFTER exam_name");
+        }
     }
 
     public function menu() {
@@ -433,6 +443,7 @@ class KR_LMS_Admin {
                                 <th>Student</th>
                                 <th>Course</th>
                                 <th>Exam Name</th>
+                                <th>Wins</th>
                                 <th>Points</th>
                                 <th>Date</th>
                                 <th style="text-align:right;">Actions</th>
@@ -452,6 +463,7 @@ class KR_LMS_Admin {
                                 </td>
                                 <td><?php echo esc_html($item->course_title); ?></td>
                                 <td><?php echo esc_html($item->exam_name); ?></td>
+                                <td><span class="cb-badge" style="background:#f1f5f9; color:#475569;"><?php echo intval($item->wins); ?></span></td>
                                 <td><span class="cb-badge"><?php echo $item->points; ?></span></td>
                                 <td><?php echo $item->date; ?></td>
                                 <td style="text-align:right;">
@@ -529,6 +541,10 @@ class KR_LMS_Admin {
                                 <div id="lb-exam-dropdown" class="cb-dropdown"></div>
                                 <input type="hidden" id="lb-exam-id"> <!-- Optional ID storage -->
                             </div>
+                        </div>
+                        <div class="cb-form-group">
+                            <label>Wins</label>
+                            <input type="number" id="lb-wins" class="cb-input" placeholder="e.g. 5" value="0">
                         </div>
                         <div class="cb-form-group">
                             <label>Points</label>

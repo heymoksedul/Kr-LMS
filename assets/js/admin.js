@@ -196,6 +196,7 @@ jQuery(function($){
         $('#lb-course-selected').val('');
         $('#lb-course-search').val('');
         $('#lb-exam-name').val('');
+        $('#lb-wins').val('0');
         $('#lb-points').val('');
         // Keep date as today
         $('#lb-modal .cb-modal-header h2').text('Add Leaderboard Entry');
@@ -213,6 +214,7 @@ jQuery(function($){
         $('#lb-course-selected').val(btn.data('course-id'));
         $('#lb-course-search').val(btn.data('course-text'));
         $('#lb-exam-name').val(btn.data('exam'));
+        $('#lb-wins').val(btn.data('wins'));
         $('#lb-points').val(btn.data('points'));
         $('#lb-date').val(btn.data('date'));
         
@@ -232,6 +234,7 @@ jQuery(function($){
         let cid   = $('#lb-course-selected').val();
         let exam  = $('#lb-exam-name').val();
         let pts   = $('#lb-points').val();
+        let wins  = $('#lb-wins').val();
         let date  = $('#lb-date').val();
 
         if(!uid || !cid || !exam || !date) {
@@ -247,6 +250,7 @@ jQuery(function($){
             user_id: uid,
             course_id: cid,
             exam_name: exam,
+            wins: wins,
             points: pts,
             date: date
         }, function(res){

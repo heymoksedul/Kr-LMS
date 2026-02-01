@@ -66,20 +66,7 @@ class KR_LMS_AJAX {
             $rankClass = ($rank <= 3) ? 'kr-lb-rank-' . $rank : '';
             $examDisplay = ($type === 'global') ? 'All Courses' : $row->exam_name;
             
-            // Calculate Wins (Count of courses where this user has the TOP score)
-            // Note: This logic duplicates the shortcode logic. Ideally should be helper method.
-            $wins = $wpdb->get_var($wpdb->prepare("
-                SELECT COUNT(*) 
-                FROM (
-                    SELECT course_id, MAX(points) as max_points 
-                    FROM $table 
-                    GROUP BY course_id
-                ) as winners
-                JOIN $table as my_scores 
-                ON winners.course_id = my_scores.course_id 
-                AND winners.max_points = my_scores.points
-                WHERE my_scores.user_id = %d
-            ", $row->user_id));
+            $wins = intval($row->wins);
 
             // Output HTML row (matching the Shortcode HTML structure)
             ?>
@@ -271,6 +258,7 @@ class KR_LMS_AJAX {
         $user_id   = intval($_POST['user_id']);
         $course_id = intval($_POST['course_id']);
         $exam_name = sanitize_text_field($_POST['exam_name']);
+        $wins      = intval($_POST['wins']);
         $points    = floatval($_POST['points']);
         $date      = sanitize_text_field($_POST['date']);
 
@@ -284,6 +272,7 @@ class KR_LMS_AJAX {
             'user_id'   => $user_id,
             'course_id' => $course_id,
             'exam_name' => $exam_name,
+            'wins'      => $wins,
             'points'    => $points,
             'date'      => $date
         ];
