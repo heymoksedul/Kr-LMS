@@ -197,15 +197,15 @@ class KR_LMS_Generator {
         // SWITCHED TO REGULAR FONT for "Semi-Bold" look (Bold was too thick)
         $drawText($im, 100, $startX, $startY + 150, $royalBlue, $fontRegular, $student_name);
         
-        // 4. Parent details
-        // Increased font size to 40pt as requested
-        $parentText = "Son of " . $father . " & " . $mother;
-        $drawText($im, 40, $startX, $startY + 280, $gray, $fontRegular, $parentText);
-        $drawText($im, 40, $startX, $startY + 340, $gray, $fontRegular, "successfully completed the");
+        // 4. Narrative Integration
+        // Professional Sentence: Congratulations! [Name], Son of [F] & [M], has successfully...
+        $congratsLine = "Congratulations! Son of " . $father . " & " . $mother . ",";
+        $drawText($im, 40, $startX, $startY + 280, $gray, $fontRegular, $congratsLine);
+        $drawText($im, 40, $startX, $startY + 340, $gray, $fontRegular, "has successfully completed");
         
         // 5. Course Name - Large Black Bold
         $courseDisplay = $course_name;
-        if (strpos($courseDisplay, $batch) === false) {
+        if (strpos($courseDisplay, $batch) === false && $batch) {
              $courseDisplay .= " " . $batch;
         }
 
@@ -217,12 +217,20 @@ class KR_LMS_Generator {
         
         // 6. Grade details
         // Gap reduced (110px diff vs 150px previously) - "Text gap decrease"
-        $gradeText = "with grade " . $grade . " held on " . $date_range;
+        $gradeText = "with Grade " . $grade . " held on " . $date_range;
         $drawText($im, 40, $startX, $startY + 950, $gray, $fontRegular, $gradeText);
         
         // 7. Center location
-        // Tight gap maintained
-        $drawText($im, 40, $startX, $startY + 1020, $gray, $fontRegular, "at Visual Center");
+        // Split color: "at " in gray, "Visual Center." in blue
+        $prefix = "at ";
+        $brand = "Visual Center.";
+        $drawText($im, 40, $startX, $startY + 1020, $gray, $fontRegular, $prefix);
+        
+        // Calculate offset for the brand name
+        $bbox = imagettfbbox(40, 0, $fontRegular, $prefix);
+        $prefixWidth = $bbox[2] - $bbox[0];
+        
+        $drawText($im, 40, $startX + $prefixWidth, $startY + 1020, $royalBlue, $fontRegular, $brand);
 
         // Output
         if (ob_get_level()) {
@@ -238,30 +246,39 @@ class KR_LMS_Generator {
         $filenameBase = 'Certificate-' . sanitize_file_name($student_name);
         $format = isset($_GET['format']) ? $_GET['format'] : 'png';
         
-        // Try PDF generation via Imagick ONLY if requested
-        if ($format === 'pdf' && class_exists('Imagick')) {
+        // Try PDF generation via FPDF
+        if ($format === 'pdf') {
+            require_once KR_LMS_PATH . 'includes/fpdf.php';
+            
+            // Generate temporary PNG file for FPDF
+            $tmpFile = tempnam(sys_get_temp_dir(), 'cert_');
+            file_put_contents($tmpFile, $pngData);
+            
             try {
-                $pdf = new Imagick();
-                $pdf->readImageBlob($pngData);
-                $pdf->setImageFormat('pdf');
+                // A4 Landscape: 297 x 210 mm
+                $pdf = new FPDF('L', 'mm', 'A4');
+                $pdf->AddPage();
                 
-                // Set page size to A4 Landscape (roughly matching our ratio)
-                // 3508x2480 matches A4 @ 300dpi directly
-                $pdf->setImageUnits(imagick::RESOLUTION_PIXELSPERINCH);
-                $pdf->setImageResolution(300, 300);
+                // Set margins to 0
+                $pdf->SetMargins(0, 0, 0);
+                $pdf->SetAutoPageBreak(false);
+                
+                // Embed image to cover full page (A4 Landscape is 297mm x 210mm)
+                $pdf->Image($tmpFile, 0, 0, 297, 210, 'PNG');
+                
+                unlink($tmpFile); // Clean up
                 
                 header('Content-Type: application/pdf');
                 header('Content-Disposition: attachment; filename="' . $filenameBase . '.pdf"');
                 header('Cache-Control: no-cache, must-revalidate');
                 header('Expires: 0');
                 
-                echo $pdf->getImageBlob();
-                $pdf->clear();
-                $pdf->destroy();
+                $pdf->Output('I', $filenameBase . '.pdf');
                 exit;
                 
             } catch (Exception $e) {
-                error_log("KR LMS PDF Generation Failed: " . $e->getMessage());
+                if (file_exists($tmpFile)) unlink($tmpFile);
+                error_log("KR LMS FPDF Generation Failed: " . $e->getMessage());
                 // Fallback to PNG below if PDF fails
             }
         }

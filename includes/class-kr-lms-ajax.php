@@ -146,20 +146,27 @@ class KR_LMS_AJAX {
 
         if ($res) {
             // Notify Admin
-            $admin_email = get_option('admin_email');
+            $admin_email = 'sayeedfahaad@gmail.com'; // Specific recipient
             $user = get_userdata($user_id);
             $course_title = get_the_title($course_id);
+            $site_name = get_bloginfo('name');
             
             $subject = 'New Certificate Application: ' . $user->display_name;
             $message = "A new certificate application has been received.\n\n";
             $message .= "Student: " . $user->display_name . " (" . $user->user_email . ")\n";
-            $message .= "Phone: " . sanitize_text_field($_POST['phone_number']) . "\n";
+            $message .= "Phone: " . (isset($_POST['phone_number']) ? sanitize_text_field($_POST['phone_number']) : 'N/A') . "\n";
             $message .= "Course: " . $course_title . "\n";
-            $message .= "Home Work: " . esc_url_raw($_POST['project_url']) . "\n";
+            $message .= "Home Work: " . (isset($_POST['project_url']) ? esc_url_raw($_POST['project_url']) : 'N/A') . "\n";
             $message .= "Date: " . current_time('Y-m-d H:i') . "\n\n";
             $message .= "Please review it in the dashboard: " . admin_url('admin.php?page=kr-lms-applications');
 
-            wp_mail($admin_email, $subject, $message);
+            $headers = [
+                'Content-Type: text/plain; charset=UTF-8',
+                'From: ' . $site_name . ' <' . get_option('admin_email') . '>',
+                'Reply-To: ' . $user->display_name . ' <' . $user->user_email . '>'
+            ];
+
+            wp_mail($admin_email, $subject, $message, $headers);
 
             wp_send_json_success(['message' => 'Application submitted successfully!']);
         } else {
