@@ -133,17 +133,34 @@ class KR_LMS_AJAX {
             'course_id'  => $course_id,
             'status'     => 'pending',
             'application_data' => wp_json_encode([
-                'father_name' => sanitize_text_field($_POST['father_name']),
-                'mother_name' => sanitize_text_field($_POST['mother_name']),
-                'start_date'  => sanitize_text_field($_POST['start_date']),
-                'end_date'    => sanitize_text_field($_POST['end_date']),
-                'project_url' => esc_url_raw($_POST['project_url'])
+                'father_name'  => sanitize_text_field($_POST['father_name']),
+                'mother_name'  => sanitize_text_field($_POST['mother_name']),
+                'phone_number' => sanitize_text_field($_POST['phone_number']),
+                'start_date'   => sanitize_text_field($_POST['start_date']),
+                'end_date'     => sanitize_text_field($_POST['end_date']),
+                'project_url'  => esc_url_raw($_POST['project_url'])
             ]),
             'applied_at' => current_time('mysql'),
             'updated_at' => current_time('mysql')
         ]);
 
         if ($res) {
+            // Notify Admin
+            $admin_email = get_option('admin_email');
+            $user = get_userdata($user_id);
+            $course_title = get_the_title($course_id);
+            
+            $subject = 'New Certificate Application: ' . $user->display_name;
+            $message = "A new certificate application has been received.\n\n";
+            $message .= "Student: " . $user->display_name . " (" . $user->user_email . ")\n";
+            $message .= "Phone: " . sanitize_text_field($_POST['phone_number']) . "\n";
+            $message .= "Course: " . $course_title . "\n";
+            $message .= "Home Work: " . esc_url_raw($_POST['project_url']) . "\n";
+            $message .= "Date: " . current_time('Y-m-d H:i') . "\n\n";
+            $message .= "Please review it in the dashboard: " . admin_url('admin.php?page=kr-lms-applications');
+
+            wp_mail($admin_email, $subject, $message);
+
             wp_send_json_success(['message' => 'Application submitted successfully!']);
         } else {
             wp_send_json_error(['message' => 'Database error. Please try again.']);

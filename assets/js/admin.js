@@ -329,9 +329,10 @@ jQuery(function($){
             <table class="cb-table" style="margin:0;">
                 <tr><td><strong>Father's Name:</strong></td><td>${btn.data('father') || '-'}</td></tr>
                 <tr><td><strong>Mother's Name:</strong></td><td>${btn.data('mother') || '-'}</td></tr>
+                <tr><td><strong>Phone Number:</strong></td><td>${btn.data('phone') || '-'}</td></tr>
                 <tr><td><strong>Start Date:</strong></td><td>${btn.data('start') || '-'}</td></tr>
                 <tr><td><strong>End Date:</strong></td><td>${btn.data('end') || '-'}</td></tr>
-                <tr><td><strong>Project URL:</strong></td><td>${btn.data('url') ? `<a href="${btn.data('url')}" target="_blank">${btn.data('url')}</a>` : '-'}</td></tr>
+                <tr><td><strong>Home Work:</strong></td><td>${btn.data('url') ? `<a href="${btn.data('url')}" target="_blank">${btn.data('url')}</a>` : '-'}</td></tr>
             </table>
         `;
         $('#app-view-content').html(html);

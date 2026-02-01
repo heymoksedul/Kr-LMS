@@ -212,7 +212,12 @@ class KR_LMS_Profile {
                                 </div>
 
                                 <div class="kr-form-row">
-                                    <label><?php esc_html_e('Project / Portfolio URL', 'kr-lms'); ?></label>
+                                    <label><?php esc_html_e('Phone Number', 'kr-lms'); ?></label>
+                                    <input type="tel" name="phone_number" id="kr-app-phone" required placeholder="017XXXXXXXX">
+                                </div>
+
+                                <div class="kr-form-row">
+                                    <label><?php esc_html_e('Home Work (Project URL)', 'kr-lms'); ?></label>
                                     <input type="url" name="project_url" id="kr-app-url" required placeholder="https://example.com/my-work">
                                 </div>
 
@@ -367,12 +372,13 @@ class KR_LMS_Profile {
                         course_id: $('#kr-app-course').val(),
                         father_name: $('#kr-app-father').val(),
                         mother_name: $('#kr-app-mother').val(),
+                        phone_number: $('#kr-app-phone').val(),
                         start_date: $('#kr-app-start').val(),
                         end_date: $('#kr-app-end').val(),
                         project_url: $('#kr-app-url').val()
                     };
 
-                    if(!data.course_id || !data.father_name || !data.mother_name || !data.start_date || !data.end_date || !data.project_url) {
+                    if(!data.course_id || !data.father_name || !data.mother_name || !data.phone_number || !data.start_date || !data.end_date || !data.project_url) {
                         msg.css('color', 'red').text('Please fill in all required fields.');
                         return;
                     }

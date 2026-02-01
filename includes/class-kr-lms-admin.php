@@ -686,6 +686,7 @@ class KR_LMS_Admin {
                                         <button type="button" class="button button-small app-view-btn" 
                                             data-father="<?php echo esc_attr($app_data['father_name'] ?? ''); ?>"
                                             data-mother="<?php echo esc_attr($app_data['mother_name'] ?? ''); ?>"
+                                            data-phone="<?php echo esc_attr($app_data['phone_number'] ?? ''); ?>"
                                             data-start="<?php echo esc_attr($app_data['start_date'] ?? ''); ?>"
                                             data-end="<?php echo esc_attr($app_data['end_date'] ?? ''); ?>"
                                             data-url="<?php echo esc_url($app_data['project_url'] ?? ''); ?>"
@@ -721,6 +722,7 @@ class KR_LMS_Admin {
                                                 
                                                 data-father="<?php echo esc_attr($app_data['father_name'] ?? ''); ?>"
                                                 data-mother="<?php echo esc_attr($app_data['mother_name'] ?? ''); ?>"
+                                                data-phone="<?php echo esc_attr($app_data['phone_number'] ?? ''); ?>"
                                                 data-start="<?php echo esc_attr($app_data['start_date'] ?? ''); ?>"
                                                 data-end="<?php echo esc_attr($app_data['end_date'] ?? ''); ?>"
                                                 data-url="<?php echo esc_url($app_data['project_url'] ?? ''); ?>"
@@ -835,7 +837,7 @@ class KR_LMS_Admin {
                         </div>
 
                         <div class="cb-form-group cb-full-width">
-                            <label>Project / Portfolio URL</label>
+                            <label>Home Work (Project URL)</label>
                             <input type="url" id="issue-url" class="cb-input">
                         </div>
                     </div>
